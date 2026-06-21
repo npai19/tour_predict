@@ -9,8 +9,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import joblib # To save/load models
 
-# Set MLflow tracking URI to a local directory for now
-mlflow.set_tracking_uri("file:///content/mlruns")
+# Set MLflow tracking URI to a SQLite database for better compatibility
+mlflow.set_tracking_uri("sqlite:///mlruns.db")
 mlflow.set_experiment("tourism_package_prediction")
 
 # Get Hugging Face token from environment variables
