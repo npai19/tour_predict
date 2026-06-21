@@ -92,13 +92,31 @@ api = HfApi(token=HF_TOKEN)
 # Push the processed datasets to Hugging Face Hub
 try:
     # Create or update the 'train' split
-    hf_train_dataset.push_to_hub(REPO_ID, split="train", commit_message="Add processed train split")
+    hf_train_dataset.push_to_hub(REPO_ID, split="train", commit_message="Add processed train split", private=True)
     print(f"Train dataset successfully pushed to Hugging Face Hub: https://huggingface.co/datasets/{REPO_ID}/viewer/default/train")
 
     # Create or update the 'test' split
-    hf_test_dataset.push_to_hub(REPO_ID, split="test", commit_message="Add processed test split")
+    hf_test_dataset.push_to_hub(REPO_ID, split="test", commit_message="Add processed test split", private=True)
     print(f"Test dataset successfully pushed to Hugging Face Hub: https://huggingface.co/datasets/{REPO_ID}/viewer/default/test")
 
+except ValueError as e:
+    if "Features of the new split don't match" in str(e):
+        print("Schema mismatch detected. Deleting existing dataset and pushing new one...")
+        try:
+            api.delete_repo(repo_id=REPO_ID, repo_type="dataset")
+            print(f"Deleted existing dataset: {REPO_ID}")
+        except Exception as delete_error:
+            print(f"Could not delete repo (may not exist): {delete_error}")
+        
+        # Recreate the repo
+        api.create_repo(repo_id=REPO_ID, repo_type="dataset", exist_ok=True)
+        hf_train_dataset.push_to_hub(REPO_ID, split="train", commit_message="Add processed train split", private=True)
+        print(f"Train dataset successfully pushed to Hugging Face Hub: https://huggingface.co/datasets/{REPO_ID}/viewer/default/train")
+        
+        hf_test_dataset.push_to_hub(REPO_ID, split="test", commit_message="Add processed test split", private=True)
+        print(f"Test dataset successfully pushed to Hugging Face Hub: https://huggingface.co/datasets/{REPO_ID}/viewer/default/test")
+    else:
+        raise
 except Exception as e:
     print(f"Error pushing processed datasets to Hugging Face Hub: {e}")
     raise
