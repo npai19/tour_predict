@@ -1,6 +1,5 @@
 from datasets import load_dataset, Dataset
 from huggingface_hub import HfApi
-from google.colab import userdata
 import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
