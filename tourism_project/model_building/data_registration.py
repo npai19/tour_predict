@@ -45,8 +45,23 @@ except Exception as e:
 
 # Push the dataset to Hugging Face Hub
 try:
-    hf_dataset.push_to_hub(REPO_ID)
+    hf_dataset.push_to_hub(REPO_ID, private=True)
     print(f"Dataset successfully pushed to Hugging Face Hub: https://huggingface.co/datasets/{REPO_ID}")
+except ValueError as e:
+    if "Features of the new split don't match" in str(e):
+        print("Schema mismatch detected. Deleting existing dataset and pushing new one...")
+        try:
+            api.delete_repo(repo_id=REPO_ID, repo_type="dataset")
+            print(f"Deleted existing dataset: {REPO_ID}")
+        except Exception as delete_error:
+            print(f"Could not delete repo (may not exist): {delete_error}")
+        
+        # Recreate the repo and push
+        api.create_repo(repo_id=REPO_ID, repo_type="dataset", exist_ok=True)
+        hf_dataset.push_to_hub(REPO_ID, private=True)
+        print(f"Dataset successfully pushed to Hugging Face Hub: https://huggingface.co/datasets/{REPO_ID}")
+    else:
+        raise
 except Exception as e:
     print(f"Error pushing dataset to Hugging Face Hub: {e}")
     raise
