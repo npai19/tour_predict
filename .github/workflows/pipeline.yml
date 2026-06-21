@@ -12,11 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
-        run: <add_code_here>
+        run: |
+          pip install datasets huggingface_hub pandas
       - name: Upload Dataset to Hugging Face Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: <add_code_here>
+        run: |
+          python tourism_project/model_building/data_registration.py
 
   data-prep:
     needs: register-dataset
@@ -24,38 +26,64 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
-        run: <add_code_here>
+        run: |
+          pip install datasets pandas scikit-learn huggingface_hub
       - name: Run Data Preparation
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: <add_code_here>
+        run: |
+          python tourism_project/data_preparation/data_preparation.py
 
-
-  model-traning:
+  model-training:
     needs: data-prep
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
-        run: <add_code_here>
-      - name: Start MLflow Server
         run: |
-          nohup mlflow ui --host 0.0.0.0 --port 5000 &  # Run MLflow UI in the background
-          sleep 5  # Wait for a moment to let the server starts
+          pip install mlflow scikit-learn xgboost lightgbm datasets transformers huggingface_hub joblib pandas
+      - name: Start MLflow Server # This is for local tracking, for remote tracking, you'd configure MLFLOW_TRACKING_URI
+        run: |
+          # nohup mlflow ui --host 0.0.0.0 --port 5000 &  # Run MLflow UI in the background - Commented out
+          # sleep 5  # Wait for a moment to let the server start - Commented out
+          echo "MLflow UI server typically not run in GitHub Actions. Configure MLFLOW_TRACKING_URI for remote tracking." # Added informative message
       - name: Model Building
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: <add_code_here>
-
+        run: |
+          python tourism_project/model_training/model_training.py
 
   deploy-hosting:
     runs-on: ubuntu-latest
-    needs: [model-traning,data-prep,register-dataset]
+    needs: [model-training,data-prep,register-dataset] # Corrected typo from 'model-traning'
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
-        run: <add_code_here>
+        run: |
+          pip install datasets huggingface_hub
       - name: Push files to Frontend Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: <add_code_here>
+          HF_SPACE_REPO_ID: nareshpaib/tourism-prediction-app # Ensure this matches your Space ID
+          HF_MODEL_REPO_ID: nareshpaib/tourism_classifier # Ensure this matches your Model ID
+        run: | # This command is kept as a single line for brevity in the YAML, but in a real script it would be multiline.
+          python -c "\import os;\from huggingface_hub import HfApi;\
+          api = HfApi(token=os.environ.get('HF_TOKEN'));\
+          SPACE_REPO_ID = os.environ.get('HF_SPACE_REPO_ID');\
+          MODEL_REPO_ID = os.environ.get('HF_MODEL_REPO_ID');\
+          print(f'Hugging Face Space repository: {SPACE_REPO_ID}');\
+          print(f'Hugging Face Model repository: {MODEL_REPO_ID}');\
+          try: api.create_repo(repo_id=SPACE_REPO_ID, repo_type='space', space_sdk='docker', exist_ok=True); print(f'Space repo created or exists: {SPACE_REPO_ID}');\
+          except Exception as e: print(f'Error creating space repo: {e}'); raise;\
+          deployment_files = [\
+              'tourism_project/deployment/Dockerfile',\
+              'tourism_project/deployment/app.py',\
+              'tourism_project/requirements.txt'\
+          ];\
+          print(f'Uploading deployment files to {SPACE_REPO_ID}...');\
+          for file_path in deployment_files:\
+              if os.path.exists(file_path):\
+                  try: api.upload_file(path_or_fileobj=file_path, path_in_repo=os.path.basename(file_path), repo_id=SPACE_REPO_ID, repo_type='space'); print(f'Uploaded {os.path.basename(file_path)}');\
+                  except Exception as e: print(f'Error uploading {file_path}: {e}'); raise;\
+              else: print(f'Warning: File not found: {file_path}');\
+          print(f'Deployment files pushed to: https://huggingface.co/spaces/{SPACE_REPO_ID}')"
