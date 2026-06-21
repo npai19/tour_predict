@@ -17,8 +17,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
       - name: Install Dependencies
         run: |
           pip install datasets huggingface_hub pandas
@@ -51,6 +49,10 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4.1.7
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install Dependencies
         run: |
           pip install mlflow scikit-learn xgboost lightgbm datasets transformers huggingface_hub joblib pandas
@@ -72,6 +74,10 @@ jobs:
     needs: [model-training,data-prep,register-dataset] # Corrected typo from 'model-traning'
     steps:
       - uses: actions/checkout@v4.1.7
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install Dependencies
         run: |
           pip install datasets huggingface_hub
